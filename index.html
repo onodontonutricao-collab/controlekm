@@ -275,4 +275,314 @@ return list.map(x=>`
 </div>
 </article>`).join('');
 }
+</script><script>
+function carForm(){
+return `
+<article>
+<h2>Novo carro</h2>
+<label>Nome<input type="text" id="carName"></label>
+<label>Placa<input type="text" id="carPlate"></label>
+<label>Ano<input type="number" id="carYear"></label>
+<button class="primary" onclick="saveCar()">Salvar carro</button>
+</article>`;
+}
+function saveCar(){
+if(!text('carName'))return say('Preencha o nome do carro');
+add(D.cars,{id:id(),name:text('carName'),plate:text('carPlate'),year:val('carYear')});
+render();
+}
+function carList(){
+if(!D.cars.length)return `<article><small>Nenhum carro cadastrado</small></article>`;
+return D.cars.map(x=>`
+<article>
+<h3>${x.name}</h3>
+<p>${x.plate||''}</p>
+<p>${x.year||''}</p>
+<div class="actions">
+<button class="danger" onclick="confirm('Excluir carro?',()=>{remove(D.cars,D.cars.indexOf(x));render()})">Excluir</button>
+</div>
+</article>`).join('');
+}
+function goalForm(){
+return `
+<article>
+<h2>Meta mensal</h2>
+<label>Mês<input type="month" id="goalMonth" value="${currentMonth()}"></label>
+<label>Valor da meta<input type="number" id="goalValue" step="0.01"></label>
+<button class="primary" onclick="saveGoal()">Salvar meta</button>
+</article>`;
+}
+function saveGoal(){
+if(!date('goalMonth')||!val('goalValue'))return say('Preencha mês e valor');
+const m=date('goalMonth');
+const i=D.goals.findIndex(x=>x.month===m);
+const item={month:m,value:val('goalValue')};
+if(i>=0)update(D.goals,i,item);else add(D.goals,item);
+render();
+}
+function goalList(){
+if(!D.goals.length)return `<article><small>Nenhuma meta cadastrada</small></article>`;
+return D.goals.map(x=>`
+<article>
+<h3>${x.month}</h3>
+<p>${money(x.value)}</p>
+<div class="actions">
+<button class="danger" onclick="confirm('Excluir meta?',()=>{remove(D.goals,D.goals.indexOf(x));render()})">Excluir</button>
+</div>
+</article>`).join('');
+}
+function maintenanceForm(){
+return `
+<article>
+<h2>Nova manutenção</h2>
+<label>Data<input type="date" id="date"></label>
+<label>Descrição<input type="text" id="desc"></label>
+<label>Próxima revisão em KM<input type="number" id="nextKm"></label>
+<button class="primary" onclick="saveMaintenance()">Salvar manutenção</button>
+</article>`;
+}
+function saveMaintenance(){
+if(!date('date')||!text('desc'))return say('Preencha data e descrição');
+add(D.maintenance,{id:id(),date:date('date'),desc:text('desc'),nextKm:val('nextKm')});
+render();
+}
+function maintenanceList(){
+if(!D.maintenance.length)return `<article><small>Nenhuma manutenção cadastrada</small></article>`;
+return D.maintenance.map(x=>`
+<article>
+<h3>${x.date}</h3>
+<p>${x.desc}</p>
+<p>Próxima revisão: ${km(x.nextKm)}</p>
+<div class="actions">
+<button class="danger" onclick="confirm('Excluir manutenção?',()=>{remove(D.maintenance,D.maintenance.indexOf(x));render()})">Excluir</button>
+</div>
+</article>`).join('');
+}
+function reports(){
+return `
+<article>
+<h2>Relatórios</h2>
+<button class="primary" onclick="exportPDF()">Exportar PDF</button>
+<button onclick="exportExcel()">Exportar Excel</button>
+</article>`;
+}
+function exportPDF(){
+const w=window.open('','_blank');
+w.document.write(`
+<h1>Controle KM Pro</h1>
+<h2>Resumo</h2>
+<p>KM total: ${km(totalKm(filtered(D.trips)))}</p>
+<p>Custo por km: ${money(costPerKm())}</p>
+<p>Ganho por km: ${money(earnPerKm())}</p>
+<p>Lucro: ${money(profit())}</p>
+`);
+w.print();
+}
+function exportExcel(){
+let csv='Tipo;Data;KM;Valor;Observação\n';
+D.trips.forEach(x=>csv+=`${x.type};${x.date};${x.km};${x.value||0};${x.note||''}\n`);
+D.fuel.forEach(x=>csv+=`Abastecimento;${x.date};${x.km||0};${x.total};${x.type}\n`);
+D.payments.forEach(x=>csv+=`Pagamento;${x.date};0;${x.amount};${x.note||''}\n`);
+D.costs.forEach(x=>csv+=`Gasto;${x.date};0;${x.value};${x.desc||''}\n`);
+const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+const a=document.createElement('a');
+a.href=URL.createObjectURL(blob);
+a.download='controle_km.csv';
+a.click();
+}
+function backup(){
+return `
+<article>
+<h2>Backup</h2>
+<button class="primary" onclick="exportData()">Exportar backup</button>
+<label>Importar backup<input type="file" id="file" onchange="importData(event)"></label>
+</article>`;
+}
+function exportData(){
+const blob=new Blob([JSON.stringify(D)],{type:'application/json'});
+const a=document.createElement('a');
+a.href=URL.createObjectURL(blob);
+a.download='backup_controle_km.json';
+a.click();
+}
+function importData(e){
+const f=e.target.files[0];
+if(!f)return;
+const r=new FileReader();
+r.onload=()=>{try{const x=JSON.parse(r.result);Object.assign(D,x);save();render();say('Backup importado')}catch(err){say('Arquivo inválido')}};
+r.readAsText(f);
+}
+function resumo(){
+const km=totalKm(filtered(D.trips));
+return `
+${monthFilter()}
+${carFilter()}
+<article>
+<h2>Resumo</h2>
+<div class="stat green"><h3>KM total</h3><p>${km(km)}</p></div>
+<div class="stat blue"><h3>Empresa a receber</h3><p>${money(companyBalance())}</p></div>
+<div class="stat yellow"><h3>Custo por km</h3><p>${money(costPerKm())}</p></div>
+<div class="stat gray"><h3>Ganho por km</h3><p>${money(earnPerKm())}</p></div>
+</article>
+<article>
+<h2>Consumo</h2>
+<p>Gasolina: ${fuelConsumption(D.fuel,'gasolina').toFixed(2)} km/l</p>
+<p>Álcool: ${fuelConsumption(D.fuel,'alcool').toFixed(2)} km/l</p>
+</article>
+<article>
+<h2>Lucro</h2>
+<p>${money(profit())}</p>
+</article>
+<article>
+<h2>Meta</h2>
+<p>Meta do mês: ${money(goal())}</p>
+</article>
+<article>
+<h2>Manutenção</h2>
+${maintenanceAlert().length?maintenanceAlert().map(x=>`<p>⚠️ ${x.desc}</p>`).join(''):'<small>Nenhum alerta</small>'}
+</article>
+${themeToggle()}
+`;
+}
+function empresa(){
+return `
+${monthFilter()}
+${carFilter()}
+<article>
+<h2>Empresa</h2>
+<p>Total de km: ${km(companyDue())}</p>
+<p>Valor devido: ${money(companyDue())}</p>
+<p>Pago: ${money(companyPaid())}</p>
+<p>Falta receber: ${money(companyBalance())}</p>
+</article>
+${tripForm('empresa')}
+${tripList('empresa')}
+${paymentForm()}
+${paymentList()}
+${themeToggle()}
+`;
+}
+function uber(){
+return `
+${monthFilter()}
+${carFilter()}
+<article>
+<h2>Uber</h2>
+<p>Total de km: ${km(totalKm(filtered(D.trips).filter(x=>x.type==='uber')))}</p>
+<p>Total recebido: ${money(totalMoney(filtered(D.trips).filter(x=>x.type==='uber')))}</p>
+</article>
+${tripForm('uber')}
+${tripList('uber')}
+${themeToggle()}
+`;
+}
+function particular(){
+return `
+${monthFilter()}
+${carFilter()}
+<article>
+<h2>Particular</h2>
+<p>Total de km: ${km(totalKm(filtered(D.trips).filter(x=>x.type==='particular')))}</p>
+</article>
+${tripForm('particular')}
+${tripList('particular')}
+${themeToggle()}
+`;
+}
+function abastecimentos(){
+return `
+${monthFilter()}
+${carFilter()}
+<article>
+<h2>Abastecimentos</h2>
+<p>Gasolina: ${fuelConsumption(D.fuel,'gasolina').toFixed(2)} km/l</p>
+<p>Álcool: ${fuelConsumption(D.fuel,'alcool').toFixed(2)} km/l</p>
+</article>
+${fuelForm()}
+${fuelList()}
+${themeToggle()}
+`;
+}
+function pagamentos(){
+return `
+${monthFilter()}
+${carFilter()}
+<article>
+<h2>Pagamentos</h2>
+<p>Total recebido: ${money(companyPaid())}</p>
+</article>
+${paymentForm()}
+${paymentList()}
+${themeToggle()}
+`;
+}
+function gastos(){
+return `
+${monthFilter()}
+${carFilter()}
+<article>
+<h2>Outros gastos</h2>
+<p>Total: ${money(totalMoney(filtered(D.costs)))}</p>
+</article>
+${costForm()}
+${costList()}
+${themeToggle()}
+`;
+}
+function carros(){
+return `
+${carForm()}
+${carList()}
+${themeToggle()}
+`;
+}
+function metas(){
+return `
+${goalForm()}
+${goalList()}
+${themeToggle()}
+`;
+}
+function manutencao(){
+return `
+${maintenanceForm()}
+${maintenanceList()}
+${themeToggle()}
+`;
+}
+function relatorios(){
+return `
+${reports()}
+${themeToggle()}
+`;
+}
+function backupPage(){
+return `
+${backup()}
+${themeToggle()}
+`;
+}
+function render(){
+renderNav();
+const v=document.getElementById('view');
+const map={
+resumo:resumo,
+empresa:empresa,
+uber:uber,
+particular:particular,
+fuel:abastecimentos,
+payments:pagamentos,
+costs:gastos,
+cars:carros,
+goals:metas,
+maintenance:manutencao,
+reports:relatorios,
+backup:backupPage
+};
+v.innerHTML=map[state.tab]();
+}
+load();
+applyTheme();
+render();
 </script>
+</html>
