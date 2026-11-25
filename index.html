@@ -1,4 +1,34 @@
-<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Controle KM</title><style>body{font:16px system-ui;background:#f1f5f9;color:#123;margin:0}header{background:#0f766e;color:white;padding:18px}main{max-width:850px;margin:auto;padding:16px}nav{display:flex;gap:8px;overflow:auto;padding:12px;background:white}button,input,select,textarea{font:inherit;padding:14px;border:1px solid #cbd5e1;border-radius:10px;box-sizing:border-box}button{cursor:pointer;background:#e2e8f0}button.primary{background:#0f766e;color:white}label{display:block;margin:14px 0}input,select,textarea{display:block;width:100%;margin-top:6px}textarea{min-height:80px}article,.card{background:white;padding:18px;border-radius:16px;margin:12px 0}small{display:block;color:#475569;margin:8px 0}.actions{display:flex;gap:8px;flex-wrap:wrap}.bar{background:#0f766e;height:18px;border-radius:8px;margin:5px 0}output{display:block;padding:12px;background:#dcfce7}h2{font-size:22px}</style><header><b>Controle de KM • Empresa, Uber e Particular</b></header><nav id="nav"></nav><main><div id="status" role="status"></div><section id="view"></section></main><script>
+<!doctype html>
+<html lang="pt-BR">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Controle KM</title>
+<style>
+body{font:16px system-ui;background:#f1f5f9;color:#123;margin:0}
+header{background:#0f766e;color:white;padding:18px;text-align:center}
+main{max-width:850px;margin:auto;padding:16px}
+nav{display:flex;gap:8px;overflow:auto;padding:12px;background:white}
+button,input,select,textarea{font:inherit;padding:14px;border:1px solid #cbd5e1;border-radius:10px;box-sizing:border-box}
+button{cursor:pointer;background:#e2e8f0}
+button.primary{background:#0f766e;color:white}
+label{display:block;margin:14px 0}
+input,select,textarea{display:block;width:100%;margin-top:6px}
+textarea{min-height:80px}
+article,.card{background:white;padding:18px;border-radius:16px;margin:12px 0}
+small{display:block;color:#475569;margin:8px 0}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.bar{height:18px;border-radius:8px;margin:5px 0}
+output{display:block;padding:12px;background:#dcfce7}
+h2{font-size:22px}
+</style>
+<header>
+<b>Controle de KM</b>
+</header>
+<nav id="nav"></nav>
+<main>
+<div id="status" role="status"></div>
+<section id="view"></section>
+</main><script>
 const groups={empresa:'Empresa',uber:'Uber',particular:'Particular',abastecimentos:'Abastecimentos',pagamentos:'Pagamentos Empresa',gastos:'Outros gastos'};
 const KEY='controle_km_estavel';let D=Object.fromEntries(Object.keys(groups).map(k=>[k,[]])),tab='resumo',editing=null;
 const $=id=>document.getElementById(id),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -25,8 +55,7 @@ v.innerHTML=`<article><h2>${editing?'Editar':'Novo registro'} — ${groups[tab]}
 $('form').onsubmit=saveRecord;
 $('history').innerHTML=D[tab].length?[...D[tab]].sort((a,b)=>b.data.localeCompare(a.data)).map(x=>`<article><b>${esc(x.data)}</b>${Object.entries(x).filter(([k])=>!['id','data'].includes(k)).map(([k,v])=>`<p>${esc(({kmIni:'KM inicial',kmFim:'KM final',km:'KM',valor:'Valor (R$)',total:'Total (R$)',preco:'Preço/L (R$)',litros:'Litros',obs:'Observação',cheio:'Tanque cheio'})[k]||k)}: ${esc(typeof v==='boolean'?(v?'Sim':'Não'):v)}</p>`).join('')}<div class="actions"><button data-id="${esc(x.id)}" onclick="edit(this.dataset.id)">Editar</button><button data-id="${esc(x.id)}" onclick="del(this.dataset.id)">Excluir</button></div></article>`).join(''):'<article>Nenhum lançamento.</article>';
 if($('kmIni'))for(const id of ['kmIni','kmFim'])$(id).oninput=()=>{const a=parse($('kmIni').value),b=parse($('kmFim').value);$('preview').textContent=!Number.isFinite(a+b)?'Preencha os dois campos.':b<a?'KM final menor que inicial. Verifique os valores.':num(b-a)+' km'+(tab==='empresa'?' • '+money(b-a):'')};
-if($('calc')){for(const id of ['calc','litros','preco','total'])$(id).addEventListener(id==='calc'?'change':'input',fuelCalc);fuelCalc()}}
-function fuelCalc(){let target=$('calc').value;for(const k of ['litros','preco','total']){$(k).readOnly=k===target;$(k).required=k!==target}let l=parse($('litros').value),p=parse($('preco').value),t=parse($('total').value);let n=target==='litros'?t/p:target==='total'?l*p:t/l;$(target).value=Number.isFinite(n)&&n>0?n.toFixed(target==='total'?2:4):''}
+if($('calc')){for(const id of ['calc','litros','preco','total'])$(id).addEventListener(id==='calc'?'change':'input',fuelCalc);fuelCalc()}}function fuelCalc(){let target=$('calc').value;for(const k of ['litros','preco','total']){$(k).readOnly=k===target;$(k).required=k!==target}let l=parse($('litros').value),p=parse($('preco').value),t=parse($('total').value);let n=target==='litros'?t/p:target==='total'?l*p:t/l;$(target).value=Number.isFinite(n)&&n>0?n.toFixed(target==='total'?2:4):''}
 function saveRecord(e){e.preventDefault();const x={id:editing||String(Date.now())+'_'+Math.random().toString(36).slice(2),data:$('data').value,obs:$('obs').value};for(const k of ['kmIni','kmFim','valor','litros','preco','total','km'])if($(k)){x[k]=parse($(k).value);if(!Number.isFinite(x[k])||x[k]<0){msg('Valor inválido em '+k+'. Use números sem separador de milhar, exemplo 12345,6.');return}}
 if('kmIni'in x){if(x.kmFim<x.kmIni){msg('KM final menor que inicial. Corrija os campos; não serão invertidos automaticamente.');return}x.km=x.kmFim-x.kmIni;if(tab==='empresa')x.valor=x.km}
 if(tab==='abastecimentos'){if(x.litros<=0||x.preco<=0||x.total<=0){msg('Abastecimento deve ter valores positivos.');return}x.tipo=$('tipo').value;x.cheio=$('cheio').checked}
@@ -38,4 +67,5 @@ function consumption(){const a=[...D.abastecimentos].sort((a,b)=>a.data.localeCo
 function exportBackup(){const blob=new Blob([JSON.stringify({formato:'controle-km',versao:1,exportado:new Date().toISOString(),dados:D},null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='backup_controle_km_'+today()+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),10000);msg('Backup gerado. Confira o arquivo na pasta Downloads.')}
 async function importBackup(file){if(!file)return;try{const next=validate(JSON.parse(await file.text()));const count=Object.values(next).reduce((s,a)=>s+a.length,0);if(!confirm('Restaurar '+count+' registros? Isso substituirá TODOS os dados atuais. Exporte um backup antes.'))return;if(persist(next)){editing=null;render();msg('Backup restaurado com sucesso.')}}catch(e){msg('Importação cancelada: '+e.message+'. Os dados atuais foram preservados.')}}
 render();
-</script></html>
+</script>
+</html>
